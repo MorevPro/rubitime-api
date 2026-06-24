@@ -1,718 +1,966 @@
----
-swagger: "2.0"
+openapi: 3.1.0
 info:
-  description: "This is a sample server Petstore server.  You can find out more about\
-    \ Swagger at [http://swagger.io](http://swagger.io) or on [irc.freenode.net, #swagger](http://swagger.io/irc/).\
-    \  For this sample, you can use the api key `special-key` to test the authorization\
-    \ filters."
-  version: "1.0.5"
-  title: "Swagger Petstore"
-  termsOfService: "http://swagger.io/terms/"
-  contact:
-    email: "apiteam@swagger.io"
-  license:
-    name: "Apache 2.0"
-    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
-host: "petstore.swagger.io"
-basePath: "/v2"
+  title: Rubitime API
+  version: "1.0.0"
+  summary: Публичное OpenAPI-описание методов Rubitime API и webhook-событий.
+  description: |
+    API Rubitime позволяет получать, создавать, обновлять и удалять записи, получать расписание дат и времени для записи,
+    а также принимать webhook-уведомления о создании, обновлении и удалении записей. Подробнее [на официальном сайтe](https://rubitime.ru/faq/api).
+
+
+    # Как получить API-ключ
+
+    1. Авторизуйтесь в Rubitime ( https://rubitime.ru/profile/ )
+    2. Откройте настройки .
+    3. Перейдите на 5 шаг настроек.
+    4. Найдите блок "Получение и сохранение данных при помощи API".
+    5. Нажмите "Сгенерировать ключ".
+
+    API-ключ передается в JSON-теле каждого запроса в поле `rk`.
+
+    API-ключ передается в JSON-теле каждого запроса в поле `rk`.
+
+    ## Как включить webhook
+
+    В том же блоке настроек укажите публичный HTTPS-адрес вашего обработчика в поле "Вебхук URL".
+    Rubitime будет отправлять на этот адрес события:
+
+    - `event-create-record` - создана новая запись;
+    - `event-update-record` - обновлена запись;
+    - `event-remove-record` - удалена запись.
+
+    Чтобы webhook считался доставленным, ваш сервер должен вернуть HTTP-код `200`.
+
+    ## Общий формат ответа API
+
+    Методы Rubitime возвращают JSON-объект с полями `status`, `message` и `data`.
+    Бизнес-ошибка обычно передается как `status: error` внутри JSON-ответа.
+
+    ## Ограничение частоты
+
+    Отправляйте запросы к Rubitime API не чаще одного раза в 5 секунд.
+servers:
+  - url: https://rubitime.ru
+    description: Production Rubitime API
 tags:
-- name: "pet"
-  description: "Everything about your Pets"
-  externalDocs:
-    description: "Find out more"
-    url: "http://swagger.io"
-- name: "store"
-  description: "Access to Petstore orders"
-- name: "user"
-  description: "Operations about user"
-  externalDocs:
-    description: "Find out more about our store"
-    url: "http://swagger.io"
-schemes:
-- "https"
-- "http"
+  - name: Records
+    description: Получение, создание, обновление и удаление записей.
+  - name: Schedule
+    description: Получение дат и времени для записи.
+  - name: Webhooks
+    description: События, которые Rubitime отправляет на URL клиента.
 paths:
-  /pet/{petId}/uploadImage:
+  /api2/get-record:
     post:
       tags:
-      - "pet"
-      summary: "uploads an image"
-      description: ""
-      operationId: "uploadFile"
-      consumes:
-      - "multipart/form-data"
-      produces:
-      - "application/json"
-      parameters:
-      - name: "petId"
-        in: "path"
-        description: "ID of pet to update"
+        - Records
+      operationId: getRecord
+      summary: Получить запись
+      description: Возвращает данные записи Rubitime по ее `id`.
+      requestBody:
         required: true
-        type: "integer"
-        format: "int64"
-      - name: "additionalMetadata"
-        in: "formData"
-        description: "Additional data to pass to server"
-        required: false
-        type: "string"
-      - name: "file"
-        in: "formData"
-        description: "file to upload"
-        required: false
-        type: "file"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GetRecordRequest"
+            examples:
+              getRecord:
+                summary: Получение записи по id
+                value:
+                  rk: xxx
+                  id: 50
       responses:
-        200:
-          description: "successful operation"
-          schema:
-            $ref: "#/definitions/ApiResponse"
-      security:
-      - petstore_auth:
-        - "write:pets"
-        - "read:pets"
-  /pet:
+        "200":
+          description: Успешный ответ или бизнес-ошибка в поле `status`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordResponse"
+              examples:
+                ok:
+                  summary: Запись найдена
+                  value:
+                    status: ok
+                    message: Success
+                    data:
+                      id: 8522929
+                      parent_record: null
+                      whom: 0
+                      created_at: "2026-06-19 13:47:20"
+                      updated_at: "2026-06-19 13:48:09"
+                      record: "2026-06-28 15:00:00"
+                      name: Тестовый Клиент
+                      price: "100"
+                      phone: "+79999999999"
+                      email: client@example.com
+                      comment: Test
+                      status: 0
+                      status_title: Записан
+                      cooperator_id: 39824
+                      cooperator_title: Сотрудник Rubitime
+                      branch_id: 19697
+                      branch_title: "г. Москва, тестовый филиал"
+                      service_id: 71790
+                      service_title: Персональная тренировка
+                      duration: "60"
+                      prepayment: "100"
+                      prepayment_date: "2026-06-19 13:48:09"
+                      prepayment_url: https://rubitime.ru/widget/prp/xxx
+                      reminder: "2026-06-27 15:00:00"
+                      custom_field1: "030303"
+                      custom_field2: М
+                      url: https://rubitime.ru/widget/card/xxx
+                error:
+                  summary: Запись не найдена или ключ неверный
+                  value:
+                    status: error
+                    message: Record not found
+                    data: []
+  /api2/create-record:
     post:
       tags:
-      - "pet"
-      summary: "Add a new pet to the store"
-      description: ""
-      operationId: "addPet"
-      consumes:
-      - "application/json"
-      - "application/xml"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - in: "body"
-        name: "body"
-        description: "Pet object that needs to be added to the store"
+        - Records
+      operationId: createRecord
+      summary: Создать запись
+      description: |
+        Создает новую запись. Обязательные поля: `rk`, `branch_id`, `cooperator_id`, `service_id`, `status`, `record`.
+      requestBody:
         required: true
-        schema:
-          $ref: "#/definitions/Pet"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRecordRequest"
+            examples:
+              createRecord:
+                summary: Создание записи клиента
+                value:
+                  rk: xxx
+                  branch_id: 1
+                  cooperator_id: 2
+                  service_id: 4
+                  status: 0
+                  record: "2021-12-08 13:30:03"
+                  name: Test name
+                  price: 50.25
+                  phone: "+77999999998"
+                  email: test@test.ru
+                  comment: Test comment
+                  reminder: "2021-12-12 00:00:00"
+                  reminder_minutes: 60
       responses:
-        405:
-          description: "Invalid input"
-      security:
-      - petstore_auth:
-        - "write:pets"
-        - "read:pets"
-    put:
-      tags:
-      - "pet"
-      summary: "Update an existing pet"
-      description: ""
-      operationId: "updatePet"
-      consumes:
-      - "application/json"
-      - "application/xml"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - in: "body"
-        name: "body"
-        description: "Pet object that needs to be added to the store"
-        required: true
-        schema:
-          $ref: "#/definitions/Pet"
-      responses:
-        400:
-          description: "Invalid ID supplied"
-        404:
-          description: "Pet not found"
-        405:
-          description: "Validation exception"
-      security:
-      - petstore_auth:
-        - "write:pets"
-        - "read:pets"
-  /pet/findByStatus:
-    get:
-      tags:
-      - "pet"
-      summary: "Finds Pets by status"
-      description: "Multiple status values can be provided with comma separated strings"
-      operationId: "findPetsByStatus"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "status"
-        in: "query"
-        description: "Status values that need to be considered for filter"
-        required: true
-        type: "array"
-        items:
-          type: "string"
-          enum:
-          - "available"
-          - "pending"
-          - "sold"
-          default: "available"
-        collectionFormat: "multi"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            type: "array"
-            items:
-              $ref: "#/definitions/Pet"
-        400:
-          description: "Invalid status value"
-      security:
-      - petstore_auth:
-        - "write:pets"
-        - "read:pets"
-  /pet/findByTags:
-    get:
-      tags:
-      - "pet"
-      summary: "Finds Pets by tags"
-      description: "Multiple tags can be provided with comma separated strings. Use\
-        \ tag1, tag2, tag3 for testing."
-      operationId: "findPetsByTags"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "tags"
-        in: "query"
-        description: "Tags to filter by"
-        required: true
-        type: "array"
-        items:
-          type: "string"
-        collectionFormat: "multi"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            type: "array"
-            items:
-              $ref: "#/definitions/Pet"
-        400:
-          description: "Invalid tag value"
-      security:
-      - petstore_auth:
-        - "write:pets"
-        - "read:pets"
-      deprecated: true
-  /pet/{petId}:
-    get:
-      tags:
-      - "pet"
-      summary: "Find pet by ID"
-      description: "Returns a single pet"
-      operationId: "getPetById"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "petId"
-        in: "path"
-        description: "ID of pet to return"
-        required: true
-        type: "integer"
-        format: "int64"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            $ref: "#/definitions/Pet"
-        400:
-          description: "Invalid ID supplied"
-        404:
-          description: "Pet not found"
-      security:
-      - api_key: []
+        "200":
+          description: Результат создания записи.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateRecordResponse"
+              examples:
+                ok:
+                  summary: Запись создана
+                  value:
+                    status: ok
+                    message: Success
+                    data:
+                      id: 123
+                      url: https://rubitime.ru/card/xxx
+                error:
+                  summary: Ошибка валидации или доступа
+                  value:
+                    status: error
+                    message: Invalid API key
+                    data: []
+  /api2/update-record:
     post:
       tags:
-      - "pet"
-      summary: "Updates a pet in the store with form data"
-      description: ""
-      operationId: "updatePetWithForm"
-      consumes:
-      - "application/x-www-form-urlencoded"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "petId"
-        in: "path"
-        description: "ID of pet that needs to be updated"
+        - Records
+      operationId: updateRecord
+      summary: Обновить запись
+      description: |
+        Обновляет существующую запись. Обязательные поля: `rk` и `id`.
+        В запрос можно передавать только изменяемые поля.
+      requestBody:
         required: true
-        type: "integer"
-        format: "int64"
-      - name: "name"
-        in: "formData"
-        description: "Updated name of the pet"
-        required: false
-        type: "string"
-      - name: "status"
-        in: "formData"
-        description: "Updated status of the pet"
-        required: false
-        type: "string"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRecordRequest"
+            examples:
+              markPaid:
+                summary: Отметить запись оплаченной и перевести в статус "Записан"
+                value:
+                  rk: xxx
+                  id: 50
+                  prepayment: 100
+                  prepayment_date: "2021-12-01 10:00:00"
+                  status: 0
       responses:
-        405:
-          description: "Invalid input"
-      security:
-      - petstore_auth:
-        - "write:pets"
-        - "read:pets"
-    delete:
-      tags:
-      - "pet"
-      summary: "Deletes a pet"
-      description: ""
-      operationId: "deletePet"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "api_key"
-        in: "header"
-        required: false
-        type: "string"
-      - name: "petId"
-        in: "path"
-        description: "Pet id to delete"
-        required: true
-        type: "integer"
-        format: "int64"
-      responses:
-        400:
-          description: "Invalid ID supplied"
-        404:
-          description: "Pet not found"
-      security:
-      - petstore_auth:
-        - "write:pets"
-        - "read:pets"
-  /store/order:
+        "200":
+          description: Результат обновления записи.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordResponse"
+              examples:
+                ok:
+                  summary: Запись обновлена
+                  value:
+                    status: ok
+                    message: Success
+                    data:
+                      id: 50
+                      status: 0
+                      status_title: Записан
+                      prepayment: "100"
+                      prepayment_date: "2021-12-01 10:00:00"
+                error:
+                  summary: Ошибка обновления
+                  value:
+                    status: error
+                    message: Record not found
+                    data: []
+  /api2/remove-record:
     post:
       tags:
-      - "store"
-      summary: "Place an order for a pet"
-      description: ""
-      operationId: "placeOrder"
-      consumes:
-      - "application/json"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - in: "body"
-        name: "body"
-        description: "order placed for purchasing the pet"
+        - Records
+      operationId: removeRecord
+      summary: Удалить запись
+      description: Удаляет запись Rubitime по `id`.
+      requestBody:
         required: true
-        schema:
-          $ref: "#/definitions/Order"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RemoveRecordRequest"
+            examples:
+              removeRecord:
+                summary: Удаление записи
+                value:
+                  rk: xxx
+                  id: 79379
       responses:
-        200:
-          description: "successful operation"
-          schema:
-            $ref: "#/definitions/Order"
-        400:
-          description: "Invalid Order"
-  /store/order/{orderId}:
-    get:
-      tags:
-      - "store"
-      summary: "Find purchase order by ID"
-      description: "For valid response try integer IDs with value >= 1 and <= 10.\
-        \ Other values will generated exceptions"
-      operationId: "getOrderById"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "orderId"
-        in: "path"
-        description: "ID of pet that needs to be fetched"
-        required: true
-        type: "integer"
-        maximum: 10
-        minimum: 1
-        format: "int64"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            $ref: "#/definitions/Order"
-        400:
-          description: "Invalid ID supplied"
-        404:
-          description: "Order not found"
-    delete:
-      tags:
-      - "store"
-      summary: "Delete purchase order by ID"
-      description: "For valid response try integer IDs with positive integer value.\
-        \ Negative or non-integer values will generate API errors"
-      operationId: "deleteOrder"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "orderId"
-        in: "path"
-        description: "ID of the order that needs to be deleted"
-        required: true
-        type: "integer"
-        minimum: 1
-        format: "int64"
-      responses:
-        400:
-          description: "Invalid ID supplied"
-        404:
-          description: "Order not found"
-  /store/inventory:
-    get:
-      tags:
-      - "store"
-      summary: "Returns pet inventories by status"
-      description: "Returns a map of status codes to quantities"
-      operationId: "getInventory"
-      produces:
-      - "application/json"
-      parameters: []
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            type: "object"
-            additionalProperties:
-              type: "integer"
-              format: "int32"
-      security:
-      - api_key: []
-  /user/createWithArray:
+        "200":
+          description: Результат удаления записи.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseRubitimeResponse"
+              examples:
+                ok:
+                  summary: Запись удалена
+                  value:
+                    status: ok
+                    message: Success
+                    data: []
+                error:
+                  summary: Ошибка удаления
+                  value:
+                    status: error
+                    message: Record not found
+                    data: []
+  /api2/get-schedule:
     post:
       tags:
-      - "user"
-      summary: "Creates list of users with given input array"
-      description: ""
-      operationId: "createUsersWithArrayInput"
-      consumes:
-      - "application/json"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - in: "body"
-        name: "body"
-        description: "List of user object"
+        - Schedule
+      operationId: getSchedule
+      summary: Получить даты и время для записи
+      description: |
+        Возвращает расписание по филиалу, сотруднику и услуге.
+
+        Параметр `only_available`:
+
+        - `1` - только даты и время, доступные для записи;
+        - `0` - только занятые даты и время;
+        - не передан - все даты и время.
+      requestBody:
         required: true
-        schema:
-          type: "array"
-          items:
-            $ref: "#/definitions/User"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GetScheduleRequest"
+            examples:
+              availableOnly:
+                summary: Только свободные слоты
+                value:
+                  rk: xxx
+                  branch_id: 1
+                  cooperator_id: 3
+                  service_id: 2
+                  only_available: 1
+              allSlots:
+                summary: Все слоты
+                value:
+                  rk: xxx
+                  branch_id: 1
+                  cooperator_id: 3
+                  service_id: 2
       responses:
-        default:
-          description: "successful operation"
-  /user/createWithList:
+        "200":
+          description: Расписание или бизнес-ошибка в поле `status`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleResponse"
+              examples:
+                ok:
+                  summary: Расписание
+                  value:
+                    status: ok
+                    message: Success
+                    data:
+                      "2024-04-19":
+                        "11:00":
+                          available: false
+                        "12:00":
+                          available: true
+                        "13:00":
+                          available: false
+                      "2024-04-20":
+                        "11:00":
+                          available: true
+                        "12:00":
+                          available: false
+                        "13:00":
+                          available: false
+                error:
+                  summary: Ошибка доступа или параметров
+                  value:
+                    status: error
+                    message: Invalid API key
+                    data: []
+webhooks:
+  rubitimeRecordEvent:
     post:
       tags:
-      - "user"
-      summary: "Creates list of users with given input array"
-      description: ""
-      operationId: "createUsersWithListInput"
-      consumes:
-      - "application/json"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - in: "body"
-        name: "body"
-        description: "List of user object"
+        - Webhooks
+      operationId: rubitimeRecordEvent
+      summary: Webhook о создании, обновлении или удалении записи
+      description: |
+        Rubitime отправляет этот запрос на URL, указанный в настройках в поле "Вебхук URL".
+        Сервер получателя должен вернуть HTTP `200`, чтобы событие считалось доставленным.
+
+        Текущий проект `rubitime-gcal-integration` принимает такие события на `POST /webhook`,
+        требует поля `event`, `data` и `data.id`, а числовые поля вроде `price`, `status`, `duration`,
+        `prepayment` принимает как числа или строки.
+      servers:
+        - url: https://{your-domain}
+          description: Публичный URL вашего обработчика webhook
+          variables:
+            your-domain:
+              default: example.com
+      requestBody:
         required: true
-        schema:
-          type: "array"
-          items:
-            $ref: "#/definitions/User"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookPayload"
+            examples:
+              created:
+                summary: Создание записи, ожидание предоплаты
+                value:
+                  from: user
+                  event: event-create-record
+                  data:
+                    id: 8522929
+                    parent_record: null
+                    whom: 0
+                    created_at: "2026-06-19 13:47:20"
+                    updated_at: null
+                    record: "2026-06-28 15:00:00"
+                    name: Тестовый Клиент
+                    price: "100"
+                    phone: "+79999999999"
+                    email: client@example.com
+                    comment: Test
+                    status: 3
+                    status_title: Ожидание предоплаты
+                    cooperator_id: 39824
+                    cooperator_title: Сотрудник Rubitime
+                    branch_id: 19697
+                    branch_title: "г. Москва, тестовый филиал"
+                    service_id: 71790
+                    service_title: Персональная тренировка
+                    url: https://rubitime.ru/widget/card/xxx
+                    source: https://example.com/
+                    duration: "60"
+                    prepayment: "100"
+                    prepayment_date: null
+                    prepayment_url: null
+                    reminder: "2026-06-27 15:00:00"
+                    custom_field1: "030303"
+                    custom_field2: М
+              updated:
+                summary: Обновление записи после оплаты
+                value:
+                  from: user
+                  event: event-update-record
+                  data:
+                    id: 8522929
+                    updated_at: "2026-06-19 13:48:09"
+                    record: "2026-06-28 15:00:00"
+                    name: Тестовый Клиент
+                    price: "100"
+                    status: 0
+                    status_title: Записан
+                    prepayment: "100"
+                    prepayment_date: "2026-06-19 13:48:09"
+                    prepayment_url: https://rubitime.ru/widget/prp/xxx
+                    duration: "60"
+                    url: https://rubitime.ru/widget/card/xxx
+              removed:
+                summary: Удаление записи
+                value:
+                  from: user
+                  event: event-remove-record
+                  data:
+                    id: 8522929
       responses:
-        default:
-          description: "successful operation"
-  /user/{username}:
-    get:
-      tags:
-      - "user"
-      summary: "Get user by user name"
-      description: ""
-      operationId: "getUserByName"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "username"
-        in: "path"
-        description: "The name that needs to be fetched. Use user1 for testing. "
-        required: true
-        type: "string"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            $ref: "#/definitions/User"
-        400:
-          description: "Invalid username supplied"
-        404:
-          description: "User not found"
-    put:
-      tags:
-      - "user"
-      summary: "Updated user"
-      description: "This can only be done by the logged in user."
-      operationId: "updateUser"
-      consumes:
-      - "application/json"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "username"
-        in: "path"
-        description: "name that need to be updated"
-        required: true
-        type: "string"
-      - in: "body"
-        name: "body"
-        description: "Updated user object"
-        required: true
-        schema:
-          $ref: "#/definitions/User"
-      responses:
-        400:
-          description: "Invalid user supplied"
-        404:
-          description: "User not found"
-    delete:
-      tags:
-      - "user"
-      summary: "Delete user"
-      description: "This can only be done by the logged in user."
-      operationId: "deleteUser"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "username"
-        in: "path"
-        description: "The name that needs to be deleted"
-        required: true
-        type: "string"
-      responses:
-        400:
-          description: "Invalid username supplied"
-        404:
-          description: "User not found"
-  /user/login:
-    get:
-      tags:
-      - "user"
-      summary: "Logs user into the system"
-      description: ""
-      operationId: "loginUser"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - name: "username"
-        in: "query"
-        description: "The user name for login"
-        required: true
-        type: "string"
-      - name: "password"
-        in: "query"
-        description: "The password for login in clear text"
-        required: true
-        type: "string"
-      responses:
-        200:
-          description: "successful operation"
-          headers:
-            X-Expires-After:
-              type: "string"
-              format: "date-time"
-              description: "date in UTC when token expires"
-            X-Rate-Limit:
-              type: "integer"
-              format: "int32"
-              description: "calls per hour allowed by the user"
-          schema:
-            type: "string"
-        400:
-          description: "Invalid username/password supplied"
-  /user/logout:
-    get:
-      tags:
-      - "user"
-      summary: "Logs out current logged in user session"
-      description: ""
-      operationId: "logoutUser"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters: []
-      responses:
-        default:
-          description: "successful operation"
-  /user:
-    post:
-      tags:
-      - "user"
-      summary: "Create user"
-      description: "This can only be done by the logged in user."
-      operationId: "createUser"
-      consumes:
-      - "application/json"
-      produces:
-      - "application/json"
-      - "application/xml"
-      parameters:
-      - in: "body"
-        name: "body"
-        description: "Created user object"
-        required: true
-        schema:
-          $ref: "#/definitions/User"
-      responses:
-        default:
-          description: "successful operation"
-securityDefinitions:
-  api_key:
-    type: "apiKey"
-    name: "api_key"
-    in: "header"
-  petstore_auth:
-    type: "oauth2"
-    authorizationUrl: "https://petstore.swagger.io/oauth/authorize"
-    flow: "implicit"
-    scopes:
-      read:pets: "read your pets"
-      write:pets: "modify pets in your account"
-definitions:
-  ApiResponse:
-    type: "object"
-    properties:
-      code:
-        type: "integer"
-        format: "int32"
-      type:
-        type: "string"
-      message:
-        type: "string"
-  Category:
-    type: "object"
-    properties:
-      id:
-        type: "integer"
-        format: "int64"
-      name:
-        type: "string"
-    xml:
-      name: "Category"
-  Pet:
-    type: "object"
-    required:
-    - "name"
-    - "photoUrls"
-    properties:
-      id:
-        type: "integer"
-        format: "int64"
-      category:
-        $ref: "#/definitions/Category"
-      name:
-        type: "string"
-        example: "doggie"
-      photoUrls:
-        type: "array"
-        xml:
-          wrapped: true
-        items:
-          type: "string"
-          xml:
-            name: "photoUrl"
-      tags:
-        type: "array"
-        xml:
-          wrapped: true
-        items:
-          xml:
-            name: "tag"
-          $ref: "#/definitions/Tag"
-      status:
-        type: "string"
-        description: "pet status in the store"
-        enum:
-        - "available"
-        - "pending"
-        - "sold"
-    xml:
-      name: "Pet"
-  Tag:
-    type: "object"
-    properties:
-      id:
-        type: "integer"
-        format: "int64"
-      name:
-        type: "string"
-    xml:
-      name: "Tag"
-  Order:
-    type: "object"
-    properties:
-      id:
-        type: "integer"
-        format: "int64"
-      petId:
-        type: "integer"
-        format: "int64"
-      quantity:
-        type: "integer"
-        format: "int32"
-      shipDate:
-        type: "string"
-        format: "date-time"
-      status:
-        type: "string"
-        description: "Order Status"
-        enum:
-        - "placed"
-        - "approved"
-        - "delivered"
-      complete:
-        type: "boolean"
-    xml:
-      name: "Order"
-  User:
-    type: "object"
-    properties:
-      id:
-        type: "integer"
-        format: "int64"
-      username:
-        type: "string"
-      firstName:
-        type: "string"
-      lastName:
-        type: "string"
-      email:
-        type: "string"
-      password:
-        type: "string"
-      phone:
-        type: "string"
-      userStatus:
-        type: "integer"
-        format: "int32"
-        description: "User Status"
-    xml:
-      name: "User"
-externalDocs:
-  description: "Find out more about Swagger"
-  url: "http://swagger.io"
+        "200":
+          description: Webhook принят получателем.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookAcceptedResponse"
+              examples:
+                accepted:
+                  summary: Ответ текущего проекта
+                  value:
+                    ok: true
+                    accepted: true
+                    record_id: 8522929
+                    event: event-create-record
+        "400":
+          description: Некорректное тело запроса или ошибка валидации на стороне получателя.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookErrorResponse"
+              examples:
+                validationFailed:
+                  value:
+                    ok: false
+                    error: validation_failed
+components:
+  schemas:
+    BaseRubitimeResponse:
+      type: object
+      required:
+        - status
+        - message
+        - data
+      properties:
+        status:
+          $ref: "#/components/schemas/RubitimeStatus"
+        message:
+          type: string
+          description: Текст результата выполнения запроса.
+          examples:
+            - Success
+        data:
+          description: Результат выполнения запроса. Форма зависит от метода.
+    CreateRecordResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseRubitimeResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  description: ID созданной записи.
+                  examples:
+                    - 123
+                url:
+                  type: string
+                  format: uri
+                  description: URL созданной записи.
+                  examples:
+                    - https://rubitime.ru/card/xxx
+    RecordResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseRubitimeResponse"
+        - type: object
+          properties:
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/Record"
+                - type: array
+                  description: Пустой массив может возвращаться при ошибке или отсутствии данных.
+                  maxItems: 0
+    ScheduleResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseRubitimeResponse"
+        - type: object
+          properties:
+            data:
+              oneOf:
+                - $ref: "#/components/schemas/ScheduleData"
+                - type: array
+                  description: Пустой массив может возвращаться при ошибке.
+                  maxItems: 0
+    RubitimeStatus:
+      type: string
+      enum:
+        - ok
+        - error
+    ApiKey:
+      type: string
+      description: API-ключ Rubitime из блока "Получение и сохранение данных при помощи API".
+      minLength: 1
+      examples:
+        - xxx
+    IdLike:
+      oneOf:
+        - type: integer
+        - type: string
+      description: Идентификатор. Rubitime в примерах допускает числовые значения как числа или строки.
+    MoneyLike:
+      oneOf:
+        - type: number
+        - type: string
+      description: Денежное значение. В webhook может приходить строкой.
+    DateTimeString:
+      type: string
+      description: Дата и время в формате `YYYY-MM-DD HH:mm:ss`.
+      pattern: "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$"
+      examples:
+        - "2026-06-28 15:00:00"
+    GetRecordRequest:
+      type: object
+      required:
+        - rk
+        - id
+      properties:
+        rk:
+          $ref: "#/components/schemas/ApiKey"
+        id:
+          $ref: "#/components/schemas/IdLike"
+      additionalProperties: false
+    RemoveRecordRequest:
+      type: object
+      required:
+        - rk
+        - id
+      properties:
+        rk:
+          $ref: "#/components/schemas/ApiKey"
+        id:
+          $ref: "#/components/schemas/IdLike"
+      additionalProperties: false
+    CreateRecordRequest:
+      allOf:
+        - $ref: "#/components/schemas/RecordWriteFields"
+        - type: object
+          required:
+            - rk
+            - branch_id
+            - cooperator_id
+            - service_id
+            - status
+            - record
+    UpdateRecordRequest:
+      allOf:
+        - $ref: "#/components/schemas/RecordWriteFields"
+        - type: object
+          required:
+            - rk
+            - id
+    RecordWriteFields:
+      type: object
+      properties:
+        rk:
+          $ref: "#/components/schemas/ApiKey"
+        id:
+          $ref: "#/components/schemas/IdLike"
+          description: ID записи. Требуется только для `update-record`.
+        branch_id:
+          $ref: "#/components/schemas/IdLike"
+          description: ID филиала.
+        cooperator_id:
+          $ref: "#/components/schemas/IdLike"
+          description: ID сотрудника.
+        service_id:
+          $ref: "#/components/schemas/IdLike"
+          description: ID услуги.
+        status:
+          oneOf:
+            - type: integer
+            - type: string
+          description: Статус записи. Например, `0` - "Записан", `3` - "Ожидание предоплаты".
+        record:
+          $ref: "#/components/schemas/DateTimeString"
+        name:
+          type: string
+          description: Имя клиента.
+        price:
+          $ref: "#/components/schemas/MoneyLike"
+        phone:
+          type: string
+          description: Телефон клиента.
+          examples:
+            - "+77999999998"
+        email:
+          type: string
+          format: email
+          description: Email клиента.
+        comment:
+          type: string
+          description: Комментарий к записи.
+        reminder:
+          $ref: "#/components/schemas/DateTimeString"
+        reminder_minutes:
+          type: integer
+          description: За сколько минут до записи отправить напоминание.
+        prepayment:
+          $ref: "#/components/schemas/MoneyLike"
+        prepayment_date:
+          $ref: "#/components/schemas/DateTimeString"
+        custom_field1:
+          type: string
+          description: Пользовательское поле 1. В текущем проекте используется как дата рождения.
+        custom_field2:
+          type: string
+          description: Пользовательское поле 2. В текущем проекте используется как пол.
+      additionalProperties: true
+    GetScheduleRequest:
+      type: object
+      required:
+        - rk
+        - branch_id
+        - cooperator_id
+        - service_id
+      properties:
+        rk:
+          $ref: "#/components/schemas/ApiKey"
+        branch_id:
+          $ref: "#/components/schemas/IdLike"
+          description: ID филиала.
+        cooperator_id:
+          $ref: "#/components/schemas/IdLike"
+          description: ID сотрудника.
+        service_id:
+          $ref: "#/components/schemas/IdLike"
+          description: ID услуги.
+        only_available:
+          oneOf:
+            - type: integer
+              enum:
+                - 0
+                - 1
+            - type: string
+              enum:
+                - "0"
+                - "1"
+          description: Фильтр доступности слотов.
+      additionalProperties: false
+    ScheduleData:
+      type: object
+      description: |
+        Объект, где ключ верхнего уровня - дата `YYYY-MM-DD`, ключ вложенного уровня - время `HH:mm`.
+      additionalProperties:
+        type: object
+        additionalProperties:
+          $ref: "#/components/schemas/ScheduleSlot"
+      examples:
+        - "2024-04-19":
+            "12:00":
+              available: true
+    ScheduleSlot:
+      type: object
+      required:
+        - available
+      properties:
+        available:
+          type: boolean
+          description: Доступен ли слот для записи.
+      additionalProperties: true
+    WebhookPayload:
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        from:
+          type:
+            - string
+            - "null"
+          description: Источник события.
+          examples:
+            - user
+        event:
+          $ref: "#/components/schemas/WebhookEvent"
+        data:
+          $ref: "#/components/schemas/Record"
+      additionalProperties: true
+    WebhookEvent:
+      type: string
+      enum:
+        - event-create-record
+        - event-update-record
+        - event-remove-record
+    WebhookAcceptedResponse:
+      type: object
+      required:
+        - ok
+        - accepted
+        - record_id
+        - event
+      properties:
+        ok:
+          type: boolean
+          const: true
+        accepted:
+          type: boolean
+          const: true
+        record_id:
+          type: integer
+        event:
+          $ref: "#/components/schemas/WebhookEvent"
+    WebhookErrorResponse:
+      type: object
+      required:
+        - ok
+        - error
+      properties:
+        ok:
+          type: boolean
+          const: false
+        error:
+          type: string
+          examples:
+            - empty_or_invalid_body
+            - validation_failed
+            - client_disconnected
+    Record:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+          description: ID записи Rubitime.
+        parent_record:
+          type:
+            - integer
+            - "null"
+          description: ID родительской записи, если есть.
+        whom:
+          type:
+            - integer
+            - "null"
+        created_at:
+          oneOf:
+            - $ref: "#/components/schemas/DateTimeString"
+            - type: "null"
+        updated_at:
+          oneOf:
+            - $ref: "#/components/schemas/DateTimeString"
+            - type: "null"
+        record:
+          oneOf:
+            - $ref: "#/components/schemas/DateTimeString"
+            - type: "null"
+          description: Дата и время записи.
+        name:
+          type: string
+          description: Имя клиента.
+        price:
+          $ref: "#/components/schemas/MoneyLike"
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        comment:
+          type: string
+        status:
+          oneOf:
+            - type: integer
+            - type: string
+            - type: "null"
+          description: Статус записи. Например, `0` - "Записан", `3` - "Ожидание предоплаты".
+        status_title:
+          type: string
+          description: Человекочитаемое название статуса.
+        cooperator_id:
+          type:
+            - integer
+            - string
+            - "null"
+          description: ID сотрудника.
+        cooperator_title:
+          type: string
+          description: Имя сотрудника.
+        branch_id:
+          type:
+            - integer
+            - string
+            - "null"
+          description: ID филиала.
+        branch_title:
+          type: string
+          description: Название или адрес филиала.
+        service_id:
+          type:
+            - integer
+            - string
+            - "null"
+          description: ID услуги.
+        service_title:
+          type: string
+          description: Название услуги.
+        duration:
+          oneOf:
+            - type: integer
+            - type: string
+            - type: "null"
+          description: Продолжительность записи в минутах.
+        prepayment:
+          oneOf:
+            - type: integer
+            - type: number
+            - type: string
+            - type: "null"
+          description: Сумма предоплаты.
+        prepayment_date:
+          oneOf:
+            - $ref: "#/components/schemas/DateTimeString"
+            - type: "null"
+          description: Дата предоплаты.
+        prepayment_url:
+          type:
+            - string
+            - "null"
+          format: uri
+          description: URL страницы оплаты.
+        reminder:
+          oneOf:
+            - $ref: "#/components/schemas/DateTimeString"
+            - type: "null"
+        url:
+          type: string
+          format: uri
+          description: URL карточки записи Rubitime.
+        source:
+          type:
+            - string
+            - "null"
+          description: Источник записи.
+        coupon:
+          type:
+            - string
+            - "null"
+        coupon_discount:
+          type:
+            - string
+            - number
+            - "null"
+        cancelReason:
+          type:
+            - string
+            - "null"
+          description: Причина отмены.
+        custom_field1:
+          type:
+            - string
+            - "null"
+          description: Пользовательское поле 1. В текущем проекте используется как дата рождения.
+        custom_field2:
+          type:
+            - string
+            - "null"
+          description: Пользовательское поле 2. В текущем проекте используется как пол.
+        custom_field3:
+          type:
+            - string
+            - "null"
+        custom_field4:
+          type:
+            - string
+            - "null"
+        custom_field5:
+          type:
+            - string
+            - "null"
+        custom_field6:
+          type:
+            - string
+            - "null"
+        custom_field7:
+          type:
+            - string
+            - "null"
+        custom_field8:
+          type:
+            - string
+            - "null"
+        custom_field9:
+          type:
+            - string
+            - "null"
+        custom_field10:
+          type:
+            - string
+            - "null"
+        custom_field11:
+          type:
+            - string
+            - "null"
+        custom_field12:
+          type:
+            - string
+            - "null"
+        custom_field13:
+          type:
+            - string
+            - "null"
+        custom_field14:
+          type:
+            - string
+            - "null"
+        custom_field15:
+          type:
+            - string
+            - "null"
+        custom_field16:
+          type:
+            - string
+            - "null"
+        custom_field17:
+          type:
+            - string
+            - "null"
+        custom_field18:
+          type:
+            - string
+            - "null"
+        custom_field19:
+          type:
+            - string
+            - "null"
+        custom_field20:
+          type:
+            - string
+            - "null"
+      additionalProperties: true
+      examples:
+        - id: 8522929
+          record: "2026-06-28 15:00:00"
+          name: Тестовый Клиент
+          price: "100"
+          phone: "+79999999999"
+          email: client@example.com
+          status: 0
+          status_title: Записан
+          cooperator_id: 39824
+          cooperator_title: Сотрудник Rubitime
+          branch_id: 19697
+          branch_title: "г. Москва, тестовый филиал"
+          service_id: 71790
+          service_title: Персональная тренировка
+          duration: "60"
+          prepayment: "100"
+          prepayment_date: "2026-06-19 13:48:09"
+          custom_field1: "030303"
+          custom_field2: М
+          url: https://rubitime.ru/widget/card/xxx
